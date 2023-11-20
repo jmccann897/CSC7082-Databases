@@ -1,0 +1,74 @@
+#New User creates a booking
+#Booking Transaction
+START TRANSACTION; 
+#User input data
+SET @userStartDate = '2024-07-10'; 
+SET @userEndDate = '2024-07-14';
+SET @duration = 5;
+SET @userSelectedLocation = 'Ireland' COLLATE utf8mb4_general_ci;
+SET @no_of_guests = 2;
+SET @no_of_children = 2;
+SET @guest_name = 'Partner and kids';
+
+#Use last customer entered into customer table
+SET @customer_id := (SELECT customer_id FROM customer 
+ORDER BY customer_id DESC 
+LIMIT 1); # ensures only one record returned
+SELECT @customer_id; 
+
+#generate booking reference which is a 10 digit random code  
+SET @booking_reference = ((SELECT FLOOR(RAND() * (10000000000 - 1 + 1)) + 1)); #note can't be duplicate based on unqiue property enforced on attribute
+
+#Set currency based on customer region
+SET @currencyID := (SELECT default_currency_id FROM customer
+INNER JOIN region ON customer.region_id = region.region_id 
+INNER JOIN currency ON region.default_currency_id = currency.currency_id
+WHERE customer_id = @customer_id);
+SELECT @currencyID;
+SAVEPOINT SAVEPOINT1;
+
+#Insert record into booking table
+INSERT INTO booking (booking_reference, booking_start_date, booking_duration_nights, number_adults, number_children, guest_name, currency_id, customer_id) 
+VALUES (@booking_reference, @userStartDate, @duration , @no_of_guests, @no_of_children, @guest_name, @currencyID, @customer_id); 
+SET @last_id_in_booking = LAST_INSERT_ID();
+SELECT @last_id_in_booking;
+
+#ROLLBACK TO SAVEPOINT SAVEPOINT1;
+
+/* Prep data for record going into room_booking */
+#User selects room_id 19 Dublin - Gresham - High Season Standard Double
+SET @room_id =19;
+
+SET @price_night := (SELECT price_night FROM room WHERE room_id = @room_id);         
+#Could use duration or use the booking id of above insert
+SET @no_of_nights := (SELECT booking_duration_nights FROM booking WHERE booking_id = @last_id_in_booking); #concern of threading is removed due to transaction
+SET @runningTotal = @price_night * @no_of_nights; # = room price_night*duration  
+
+#Insert record into room_booking table
+INSERT INTO room_booking (running_total, currency_id, room_id, booking_id)   
+VALUES (@runningTotal, @currencyID, @room_id, @last_id_in_booking) ;  
+SET @last_id_in_room_booking = LAST_INSERT_ID();  
+SELECT @last_id_in_room_booking;
+
+#Update total price of booking record to start off as rooms*nights
+UPDATE booking SET total_price = @runningTotal WHERE booking.booking_id = @last_id_in_booking;
+
+#User selects second room for kids - room_id 21 - High Season Twin 
+SET @room_id =21;
+
+SET @price_night := (SELECT price_night FROM room WHERE room_id = @room_id);         
+#Could use duration or use the booking id of above insert
+SET @no_of_nights := (SELECT booking_duration_nights FROM booking WHERE booking_id = @last_id_in_booking); #concern of threading is removed due to transaction
+SET @runningTotal = @price_night * @no_of_nights; # = room price_night*duration  
+
+#Insert record into room_booking table
+INSERT INTO room_booking (running_total, currency_id, room_id, booking_id)   
+VALUES (@runningTotal, @currencyID, @room_id, @last_id_in_booking) ;  
+SET @last_id_in_room_booking = LAST_INSERT_ID();  
+SELECT @last_id_in_room_booking;
+
+#Update total price of booking record to start off as rooms*nights
+UPDATE booking SET total_price = @runningTotal WHERE booking.booking_id = @last_id_in_booking;
+
+#SAVEPOINT SAVEPOINT2;
+COMMIT;

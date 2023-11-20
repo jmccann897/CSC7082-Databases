@@ -1,0 +1,80 @@
+#Search accommodations by location WHERE region.id = 3 = ‘Bulgaria’
+SELECT accommodation_name, region_name FROM accommodation INNER JOIN address  
+ON accommodation.address_id = address.address_id  
+INNER JOIN region  
+ON address.region_id = region.region_id  
+WHERE address.region_id = 3; 
+
+/* Search accomm based on user start and end date*/
+SET @userStartDate = '2024-05-31';
+SET @userEndDate = '2024-06-13';
+SET @userSelectedLocation = 'Bulgaria'COLLATE utf8mb4_general_ci;
+
+#Search Rooms and prices based on user start and end date and region 
+SELECT room_name, date_forsale_from, date_forsale_to, price_night, accommodation_name, region_name FROM accommodation
+INNER JOIN room
+ON accommodation.accommodation_id = room.accommodation_id
+INNER JOIN address
+ON accommodation.address_id = address.address_id
+INNER JOIN region
+ON address.region_id = region.region_id
+WHERE ((@userStartDate BETWEEN room.date_forsale_from AND room.date_forsale_to) AND 
+(@userEndDate BETWEEN room.date_forsale_from AND room.date_forsale_to))
+AND region.region_name = @userSelectedLocation;
+
+/*Search Accommodation and rooms by number of guests */
+SET @no_of_guests = 2;
+SELECT accommodation_name, room_name, price_night, room_type_name, room_type_description, number_of_guests 
+FROM accommodation
+INNER JOIN room
+ON accommodation.accommodation_id = room.accommodation_id
+INNER JOIN room_type
+ON room.room_type_id = room_type.room_type_id
+WHERE room_type.number_of_guests >= @no_of_guests;
+
+/*Updating to 4 guests*/
+SET @no_of_guests = 4;
+SELECT accommodation_name, room_name, price_night, room_type_name, room_type_description, number_of_guests 
+FROM accommodation
+INNER JOIN room
+ON accommodation.accommodation_id = room.accommodation_id
+INNER JOIN room_type
+ON room.room_type_id = room_type.room_type_id
+WHERE room_type.number_of_guests >= @no_of_guests;
+
+/*Search by room quantity */
+SET @no_of_rooms = 3;
+SELECT accommodation_name, room_name, price_night, quantity_rooms FROM accommodation
+INNER JOIN room
+ON accommodation.accommodation_id = room.accommodation_id
+WHERE (room.quantity_rooms >= @no_of_rooms);
+
+#Searching by accommodation facilities id IN all scenarios 
+SELECT * FROM accommodation_accommodation_facilities  
+INNER JOIN accommodation   
+ON accommodation_accommodation_facilities.accommodation_id = accommodation.accommodation_id  
+WHERE accommodation_facilities_id  IN (1,2,3,4); 
+
+#adjust to show impact of accommodation facilities for wifi and pool 
+SELECT * FROM accommodation_accommodation_facilities  
+INNER JOIN accommodation   
+ON accommodation_accommodation_facilities.accommodation_id = accommodation.accommodation_id  
+WHERE accommodation_facilities_id  IN (1,2); 
+
+#show the use of group_by dropping duplicate entries  
+SELECT * FROM accommodation_accommodation_facilities  
+INNER JOIN accommodation   
+ON accommodation_accommodation_facilities.accommodation_id = accommodation.accommodation_id  
+WHERE accommodation_facilities_id  IN (1,2) 
+GROUP BY accommodation.accommodation_name
+ORDER BY accommodation_accommodation_facilities.accommodation_facilities_id; #otherwise ordered by the group by alphabetically
+
+#add in having condition of count =2 requirement 
+#which separates the above list by those with only one accomm_fac and those with more than one which must be 2 in this case due to the IN clause. 
+SELECT * FROM accommodation_accommodation_facilities  
+INNER JOIN accommodation   
+ON accommodation_accommodation_facilities.accommodation_id = accommodation.accommodation_id  
+WHERE accommodation_facilities_id  IN (1,2) 
+GROUP BY accommodation.accommodation_name 
+HAVING COUNT(accommodation_accommodation_facilities.accommodation_id) =2
+ORDER BY accommodation_accommodation_facilities.accommodation_facilities_id;

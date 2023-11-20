@@ -1,0 +1,77 @@
+/*Booking_line_items addition and then price update*/
+
+#DISCOUNT
+START TRANSACTION;
+#Use last booking entered into booking table
+SET @booking_id := (SELECT booking_id FROM booking 
+ORDER BY booking_id DESC 
+LIMIT 1); # ensures only one record returned
+SET @totalPrice = (SELECT total_price FROM booking WHERE booking_id = @booking_id);
+SELECT @totalPrice;
+SET @item_name = 'Discount';
+SET @item_description = 'This is your Genius Discount';
+SET @line_cost = 0.00;
+SET @line_cost = -(0.10*@totalPrice);
+SET @payment_type_id = 2;
+INSERT INTO booking_line_item (item_name, item_description, line_cost, payment_type_id, booking_id)
+VALUES (@item_name, @item_description, @line_cost, @payment_type_id, @booking_id);
+COMMIT;
+
+#Dinner
+START TRANSACTION;
+#Use last booking entered into booking table
+SET @booking_id := (SELECT booking_id FROM booking 
+ORDER BY booking_id DESC 
+LIMIT 1); # ensures only one record returned
+SET @totalPrice = (SELECT total_price FROM booking WHERE booking_id = @booking_id);
+SELECT @totalPrice;
+SET @item_name = 'Dinner';
+SET @item_description = 'Dinner within the accommodation';
+SET @line_cost = 40;
+SET @payment_type_id = 1;
+INSERT INTO booking_line_item (item_name, item_description, line_cost, payment_type_id, booking_id)
+VALUES (@item_name, @item_description, @line_cost, @payment_type_id, @booking_id);
+COMMIT;
+
+
+START TRANSACTION;
+#Use last booking entered into booking table
+SET @booking_id := (SELECT booking_id FROM booking 
+ORDER BY booking_id DESC 
+LIMIT 1); # ensures only one record returned
+SET @totalPrice = (SELECT total_price FROM booking WHERE booking_id = @booking_id);
+SELECT @totalPrice;
+SET @item_name = 'Airport Transfer';
+SET @item_description = 'Taxi to and from airport';
+SET @line_cost = 30;
+SET @payment_type_id = 1;
+INSERT INTO booking_line_item (item_name, item_description, line_cost, payment_type_id, booking_id)
+VALUES (@item_name, @item_description, @line_cost, @payment_type_id, @booking_id);
+COMMIT;
+
+START TRANSACTION;
+#Use last booking entered into booking table
+SET @booking_id := (SELECT booking_id FROM booking 
+ORDER BY booking_id DESC 
+LIMIT 1); # ensures only one record returned
+SET @totalPrice = (SELECT total_price FROM booking WHERE booking_id = @booking_id);
+SELECT @totalPrice;
+SET @item_name = 'Sightseeing tour';
+SET @item_description = 'A ticket to for local sightseeing tour';
+SET @line_cost = 15;
+SET @payment_type_id = 1;
+INSERT INTO booking_line_item (item_name, item_description, line_cost, payment_type_id, booking_id)
+VALUES (@item_name, @item_description, @line_cost, @payment_type_id, @booking_id);
+COMMIT;
+
+#Update Price on booking record
+START TRANSACTION;
+#Find sum of all booking line items related to that booking_id
+#SET @booking_id = 15;
+SET @line_item_total := (SELECT SUM(line_cost) FROM booking_line_item WHERE booking_id = @booking_id);
+#SELECT total_price FROM booking WHERE booking.booking_id = @booking_id;
+#Use last booking entered into booking table
+UPDATE booking SET total_price = (total_price + @line_item_total) WHERE booking.booking_id = @booking_id;
+SELECT @line_item_total;
+SELECT total_price FROM booking WHERE booking.booking_id = @booking_id;
+COMMIT;

@@ -1,0 +1,81 @@
+#Transaction for creating new customer record - simulating registration
+START TRANSACTION;
+#personal details input by user
+SET @first_name = 'Another';
+SET @last_name = 'User';
+SET @customer_email = 'fake@email.com';
+SET @telephone_number = '00000000000';
+
+#SAVEPOINT s1; # incase hashing fails
+
+#Password Hashing
+/*if the user doesn't create password, nothing is saved and transaction should not complete 
+although booking.com does allow verified email links to log in*/
+SET @plainPassword = 'fake'; #assumed to meet complexity requirements
+#create salt - create a random code, six chars in length   
+SELECT @salt_for_password := SUBSTRING(SHA1(RAND()), 1, 6);   
+#generate hashed password by Concat our salt and our plain password, then hash them.   
+SELECT @saltedHash := SHA1(CONCAT(@salt_for_password, @plainPassword)) AS salted_hash_value;   
+#Get the value we should store in the database (concat of the plain text salt and the hash)   
+SELECT @hashed_password := CONCAT(@salt_for_password,@saltedHash) AS password_to_be_stored;   
+
+#Address information input by user
+SET @street_name_and_number = '32 London Bridge St';
+SET @postcode = 'SE1 9SG';
+SET @city_id = 5; # London
+SET @region_id = 2; # UK region id
+
+#SAVEPOINT s2; #incase card fails
+
+#card information
+SET @spacer = ' ';
+SET @cardholder_name = (CONCAT(@first_name, @spacer, @last_name)); 
+SET @card_long_number = '9876987698769876';
+SET @card_start_date = '2020-08-12';
+SET @card_end_date = '2030-08-11';
+SET @card_type = 'MasterCard';
+
+#SAVEPOINT s3; #incase inserts fail but customer doesn't need to re-enter details
+#Card long number encryption
+SET @secretPassword = 'adamSANDLERisAgoodACTOR'; 
+#Encrypt long num 
+SET @card_long_number = AES_ENCRYPT(@card_long_number, @secretPassword); #re-assign card_long_number variable with encrypted version
+
+#Inserts
+#Add record to address table
+INSERT INTO address (street_name_and_number, postcode, city_id, region_id)   
+VALUES(@street_name_and_number, @postcode, @city_id, @region_id);   
+SET @last_id_in_address = LAST_INSERT_ID();  
+#Add record to customer table  
+INSERT INTO customer (first_name, last_name, customer_email, telephone_number, salt_for_password, hashed_password, region_id, address_id)   
+VALUES(@first_name, @last_name, @customer_email, @telephone_number, @salt_for_password, @hashed_password, @region_id, @last_id_in_address);   
+SET @last_id_in_customer = LAST_INSERT_ID();  
+#Add record to card table
+INSERT INTO card (cardholder_name, card_long_number, card_start_date, card_end_date, card_type, customer_id)   
+VALUES(@cardholder_name, @card_long_number ,@card_start_date, @card_end_date, @card_type, @last_id_in_customer);   
+SET @last_id_in_card = LAST_INSERT_ID();  
+
+COMMIT; 
+
+#Password check when logging in 
+/* Checking customer login plaintext password against stored hash*/ 
+SET @customerLoggingIn := (SELECT customer_id FROM customer WHERE customer_id =2); 
+SELECT @customerLoggingIn; 
+SET @saltOriginallyUsed := (SELECT salt_for_password FROM customer WHERE customer_id=2); 
+SELECT @saltOriginallyUsed; 
+SET @enteredPlaintextPassword = 'badpassword'; #hardcoded in original password to simulate user entering
+SELECT @enteredPlaintextPassword; 
+
+#show login generated hash output without salt 
+SET @loginHashOutputNoSaltPrefix := (SHA1(CONCAT(@saltOriginallyUsed, @enteredPlaintextPassword))); 
+SELECT @loginHashOutputNoSaltPrefix; 
+#show stored hashed_password without salt 
+SET @hashed_password_NoSaltPrefix:= (SELECT SUBSTRING(hashed_password, 7, 40) FROM customer WHERE customer_id=2); 
+SELECT @hashed_password_NoSaltPrefix; 
+
+#show login generated hash output with salt 
+SET @loginHashOutputWithSalt := (CONCAT(@saltOriginallyUsed, @loginHashOutputNoSaltPrefix)); 
+SELECT @loginHashOutputWithSalt; 
+#show stored hashed_password with salt 
+SET @hashed_password_WithSalt := (SELECT hashed_password FROM customer WHERE customer_id=2); 
+SELECT @hashed_password_WithSalt; 

@@ -1,0 +1,103 @@
+/* Invoicing for a booking */
+#Customer gives reference - Bulgaria High Season Double Another User9 for 13 nights
+SET @booking_ref = '4443616024' COLLATE utf8mb4_general_ci;
+#input into system to return booking_id
+SET @booking_id := (SELECT booking_id FROM booking WHERE booking_reference = @booking_ref);
+SELECT @booking_id;
+#find all relating booking line items to booking_id
+SELECT item_name, item_description, line_cost FROM booking_line_item WHERE booking_id = @booking_id;
+#determine total to pay (booking table total cost = running totals of room_booking + line cost total)
+#running_totals
+SET @Rooms_Total := (SELECT SUM(running_total) FROM room_booking WHERE booking_id = @booking_id);
+SELECT @Rooms_Total AS Rooms_Total_For_This_Booking;
+#line cost total
+SET @Line_Total := (SELECT ROUND(SUM(line_cost),2) from booking_line_item WHERE booking_id = @booking_id);
+SELECT @Line_Total AS Line_Total_For_This_Booking;
+#Total to be paid
+SET @Calculated_Total := @Rooms_Total + @Line_Total;
+SELECT @Calculated_Total AS Calculated_Total_Price;
+SELECT total_price AS Lifted_from_booking_table FROM booking WHERE booking_id = @booking_id;
+
+#Currency
+SET @room_id = 13;
+SET @booking_id = 9;
+SET @room_booking_id = 6;
+#cost currency based on knowing room_id from room_booking table
+SET @CurrencyOfPrice := (SELECT ISO_currency_code FROM currency 
+                         INNER JOIN room ON currency.currency_id = room.currency_id
+                         WHERE room_id = @room_id);
+SELECT @CurrencyOfPrice;
+#User currency based on knowing booking_id from room_booking table
+SET @CurrencyOfUser := (SELECT ISO_currency_code FROM currency
+                       INNER JOIN booking ON currency.currency_id = booking.currency_id
+                       WHERE booking_id = @booking_id);
+SELECT @CurrencyOfUser;
+#Total Price in Users local currency
+SET @from := (SELECT room.currency_id FROM room 
+              INNER JOIN room_booking
+              ON room.room_id = room_booking.room_id
+              WHERE room_booking.room_booking_id = @room_booking_id);
+SELECT @from;
+SET @to := (SELECT default_currency_id FROM region
+           INNER JOIN customer ON customer.region_id = region.region_id
+           INNER JOIN booking ON customer.customer_id = booking.customer_id
+            INNER JOIN room_booking ON booking.booking_id = room_booking.booking_id
+            WHERE room_booking.room_booking_id = @room_booking_id);
+SELECT @to;
+SET @exchangeRate := (SELECT exchange_rate FROM exchange_rate WHERE
+                     from_currency = @from AND to_currency = @to);
+SELECT @exchangeRate;
+SET @convertedPrice:= (ROUND(@Calculated_Total * @exchangeRate, 2));
+SELECT @convertedPrice AS price_in_GBP;
+
+
+#Ireland reference - Another User11 Low Season Double for 2 nights
+SET @booking_ref = '3882762198' COLLATE utf8mb4_general_ci;
+#input into system to return booking_id
+SET @booking_id := (SELECT booking_id FROM booking WHERE booking_reference = @booking_ref);
+SELECT @booking_id;
+#find all relating booking line items to booking_id
+SELECT item_name, item_description, line_cost FROM booking_line_item WHERE booking_id = @booking_id;
+#determine total to pay (booking table total cost = running totals of room_booking + line cost total)
+#running_totals
+SET @Rooms_Total := (SELECT SUM(running_total) FROM room_booking WHERE booking_id = @booking_id);
+SELECT @Rooms_Total AS Rooms_Total_For_This_Booking;
+#line cost total
+SET @Line_Total := (SELECT ROUND(SUM(line_cost),2) from booking_line_item WHERE booking_id = @booking_id);
+SELECT @Line_Total AS Line_Total_For_This_Booking;
+#Total to be paid
+SET @Calculated_Total := @Rooms_Total + @Line_Total;
+SELECT @Calculated_Total AS Calculated_Total_Price;
+SELECT total_price AS Lifted_from_booking_table FROM booking WHERE booking_id = @booking_id;
+
+#Currency
+SET @room_id = 18;
+SET @booking_id = 26;
+SET @room_booking_id = 12;
+#cost currency based on knowing room_id from room_booking table
+SET @CurrencyOfPrice := (SELECT ISO_currency_code FROM currency 
+                         INNER JOIN room ON currency.currency_id = room.currency_id
+                         WHERE room_id = @room_id);
+SELECT @CurrencyOfPrice;
+#User currency based on knowing booking_id from room_booking table
+SET @CurrencyOfUser := (SELECT ISO_currency_code FROM currency
+                       INNER JOIN booking ON currency.currency_id = booking.currency_id
+                       WHERE booking_id = @booking_id);
+SELECT @CurrencyOfUser;
+#Total Price in Users local currency
+SET @from := (SELECT room.currency_id FROM room 
+              INNER JOIN room_booking
+              ON room.room_id = room_booking.room_id
+              WHERE room_booking.room_booking_id = @room_booking_id);
+SELECT @from;
+SET @to := (SELECT default_currency_id FROM region
+           INNER JOIN customer ON customer.region_id = region.region_id
+           INNER JOIN booking ON customer.customer_id = booking.customer_id
+            INNER JOIN room_booking ON booking.booking_id = room_booking.booking_id
+            WHERE room_booking.room_booking_id = @room_booking_id);
+SELECT @to;
+SET @exchangeRate := (SELECT exchange_rate FROM exchange_rate WHERE
+                     from_currency = @from AND to_currency = @to);
+SELECT @exchangeRate;
+SET @convertedPrice:= (ROUND(@Calculated_Total * @exchangeRate, 2));
+SELECT @convertedPrice AS price_in_GBP;

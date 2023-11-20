@@ -1,0 +1,66 @@
+/* Availability Model */
+#Search for rooms on dates entered by customer
+SET @userStartDate = '2024-05-20';
+SET @userEndDate = '2024-06-25';
+SELECT accommodation_name, room_name, quantity_rooms, room_id FROM room 
+INNER JOIN accommodation
+ON accommodation.accommodation_id = room.accommodation_id
+WHERE 
+(@userStartDate BETWEEN room.date_forsale_from AND room.date_forsale_to) 
+AND (@userEndDate BETWEEN room.date_forsale_from AND room.date_forsale_to)
+AND room_id =13; #User selects room_id = 13
+
+#Find booking start date
+SET @bookedStart := (SELECT booking_start_date FROM booking 
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE room_booking.room_id=13 AND room_booking.booking_id=15);
+SELECT @bookedStart;
+#Find booking duration
+SET @bookedDuration := (SELECT booking_duration_nights FROM booking 
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE room_booking.room_id=13 AND room_booking.booking_id=15);
+SELECT @bookedDuration;
+#Calculate booking end date
+SET @bookedEnd := (SELECT ADDDATE(@bookedStart, @bookedDuration));
+SELECT @bookedEnd;
+
+#Search for booking with dates at same time as entered by customer
+#--> Doesn't work because need to specify where to search table for dates
+SELECT booking_start_date, booking_duration_nights, room_id FROM booking
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE (@userStartDate BETWEEN @bookedStart AND @bookedEnd)
+AND (@userEndDate BETWEEN @bookedStart AND @bookedEnd);
+
+#Search for booking with dates at same time as entered by customer
+SELECT booking_start_date, booking_duration_nights, room_id FROM booking
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE room_id = 13
+AND booking_start_date BETWEEN @userStartDate AND @userEndDate; # This will identify overlaps on start dates
+
+#Search for booking with dates at same time as entered by customer
+SELECT booking_start_date, booking_duration_nights, room_id FROM booking
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE room_id = 13
+AND @bookedEnd BETWEEN @userStartDate AND @userEndDate; # This will identify overlaps on end dates
+
+#Count number of rooms in use on given date
+SET @dateToCheck = '2024-05-31';
+SELECT COUNT(room_id) FROM booking
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+WHERE room_id = 13
+AND booking_start_date =@dateToCheck;
+
+/*Checking bookings based on timestamp*/
+SELECT * FROM booking
+INNER JOIN room_booking
+ON booking.booking_id = room_booking.booking_id
+INNER JOIN room
+ON room_booking.room_id = room.room_id
+WHERE room_booking.room_id=13
+ORDER BY booking_made_timestamp;
